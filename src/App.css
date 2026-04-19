@@ -1,0 +1,29 @@
+.card {
+  background: white;
+  padding: 30px;
+  border-radius: 14px;
+  width: 380px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+}
+
+.error {
+  color: white;
+  background: #ef4444;
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.footer {
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #555;
+}
+
+.empty {
+  text-align: center;
+  color: #888;
+}
