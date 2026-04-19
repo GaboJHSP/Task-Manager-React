@@ -18,7 +18,7 @@ function App(){
 
   // 🔹 GET - Obtener tareas
   useEffect(() => {
-    fetch("http://localhost:3000/tasks")
+    fetch(`${import.meta.env.VITE_API_URL}/tasks`)
       .then((response) => response.json())
       .then((data: Task[]) => {
         setTasks(data);
@@ -36,7 +36,7 @@ function App(){
       return;
     }
 
-    fetch("http://localhost:3000/tasks", {
+    fetch(`${import.meta.env.VITE_API_URL}/tasks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -54,7 +54,7 @@ function App(){
 
   // 🔹 DELETE - Eliminar tarea
   const deleteTask = (id: number) => {
-    fetch(`http://localhost:3000/tasks/${id}`, {
+    fetch(`${import.meta.env.VITE_API_URL}/tasks/${id}`, {
       method: "DELETE"
     })
     .then(() => {
@@ -70,7 +70,7 @@ function App(){
     const task = tasks.find(t => t.id === id);
     if(!task) return;
 
-    fetch(`http://localhost:3000/tasks/${id}`, {
+    fetch(`${import.meta.env.VITE_API_URL}/tasks/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json"
