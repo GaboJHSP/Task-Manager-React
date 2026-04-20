@@ -185,6 +185,54 @@ JWT_SECRET=...
 
 ---
 
+# 🚧 Limitaciones y Mejoras Futuras
+
+## Aplicación Web: Task Manager
+
+---
+
+## ⚠️ Limitaciones actuales
+
+### 1. 📝 Gestión incompleta de tareas
+
+- No existe funcionalidad para **editar tareas existentes**
+- Falta paginación o filtrado de tareas
+
+---
+
+### 2. 👤 Ausencia de sistema de usuarios
+
+- No existe registro formal de usuarios
+- No hay separación de datos por usuario (multiusuario inexistente)
+
+---
+
+### 3. 🔐 Autenticación limitada con JWT
+
+- Uso básico de JWT sin buenas prácticas avanzadas
+- No existe expiración controlada o renovación de tokens
+- El token se valida, pero no se usa para restringir correctamente los recursos
+
+---
+
+### 4. ⚠️ Falta de validaciones
+
+- No se validan inputs del usuario (username, password, tareas)
+- Riesgo de datos inválidos o inconsistentes
+- No hay sanitización → posible vulnerabilidad a ataques
+
+---
+
+### 5. 🧱 Arquitectura monolítica básica
+
+- Todo el código está concentrado en un solo archivo (`index.ts`)
+- No hay separación de responsabilidades:
+    - rutas
+    - controladores
+    - middlewares
+- Dificulta el mantenimiento y escalabilidad
+
+
 # 📌 Conclusión
 
 Este proyecto implementa una arquitectura moderna basada en:
