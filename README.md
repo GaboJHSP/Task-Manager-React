@@ -85,19 +85,6 @@ fetch(`${import.meta.env.VITE_API_URL}/tasks`, {
 
 ---
 
-## 🚏 Ruta del backend
-
-```ts
-app.get('/tasks', async (req, res) => {
-  const tasks = await prisma.task.findMany();
-  res.json(tasks);
-});
-```
-
-👉 Esta ruta obtiene todas las tareas almacenadas en la base de datos.
-
----
-
 ## 🔌 Conexión con la base de datos
 
 ```ts
@@ -170,16 +157,6 @@ Ahora:
 
 ---
 
-# 🔐 Autenticación
-
-El sistema incluye autenticación mediante **JWT (JSON Web Token)**:
-
-* Login genera un token
-* El token se envía en headers
-* Existen rutas protegidas que validan el token
-
----
-
 # 🚀 Funcionalidades
 
 ✔ Crear tareas
@@ -196,7 +173,7 @@ El sistema incluye autenticación mediante **JWT (JSON Web Token)**:
 Frontend:
 
 ```env
-VITE_API_URL=https://tu-backend.onrender.com
+VITE_API_URL=https://task-manager-react-5slt.onrender.com/tasks
 ```
 
 Backend:
