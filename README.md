@@ -2,7 +2,7 @@
  
 Aplicación web desarrollada con **React + Node.js + PostgreSQL**, que permite gestionar tareas (crear, listar, editar y eliminar), incluyendo autenticación con **JWT** y rutas protegidas.
  
-<!-- BADGE_CI -->
+[![CI](https://github.com/GaboJHSP/Task-Manager-React/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/GaboJHSP/Task-Manager-React/actions/workflows/ci.yml)
  
 ## 🚀 Instalación local
  
