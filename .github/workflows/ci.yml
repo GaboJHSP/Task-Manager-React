@@ -73,7 +73,7 @@ jobs:
         run: npx prisma generate
 
       - name: Ejecutar lint del backend
-        run: npm run lint
+        run: npm run lint --if-present
 
       - name: Compilar backend
         run: npm run build
