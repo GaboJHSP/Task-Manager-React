@@ -76,4 +76,4 @@ jobs:
         run: npm run lint --if-present
 
       - name: Compilar backend
-        run: npm run build
+        run: npm run build --if-present
