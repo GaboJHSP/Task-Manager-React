@@ -1,4 +1,4 @@
-import "../styles/TasksCard.css";
+import "../styles/TaskCard.css";
 
 type Props = {
   text: string;
