@@ -1,5 +1,44 @@
-# Logs
-logs
+# =========================================================
+# DEPENDENCIAS
+# =========================================================
+
+node_modules/
+**/node_modules/
+
+# =========================================================
+# VARIABLES DE ENTORNO
+# =========================================================
+
+.env
+.env.*
+!.env.example
+
+**/.env
+**/.env.*
+!**/.env.example
+
+# =========================================================
+# COMPILADOS Y BUILD
+# =========================================================
+
+dist/
+build/
+out/
+coverage/
+
+**/dist/
+**/build/
+**/out/
+**/coverage/
+
+dist-ssr/
+**/dist-ssr/
+
+# =========================================================
+# LOGS
+# =========================================================
+
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +46,76 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# =========================================================
+# PRISMA
+# =========================================================
 
-# Editor directories and files
+# Bases SQLite locales, en caso de utilizarlas
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# No ignorar el esquema ni las migraciones de Prisma
+!backend/prisma/schema.prisma
+!backend/prisma/migrations/
+!backend/prisma/migrations/**
+
+# =========================================================
+# ARCHIVOS TEMPORALES
+# =========================================================
+
+tmp/
+temp/
+.cache/
+.eslintcache
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# =========================================================
+# EDITORES E IDE
+# =========================================================
+
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+
+# =========================================================
+# SISTEMA OPERATIVO
+# =========================================================
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================================================
+# VITE / TYPESCRIPT
+# =========================================================
+
+*.tsbuildinfo
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# =========================================================
+# ARCHIVOS LOCALES
+# =========================================================
+
+*.local
+
+# =========================================================
+# QODO
+# =========================================================
+
+.qodo/
