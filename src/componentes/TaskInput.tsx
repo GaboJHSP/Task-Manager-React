@@ -1,28 +1,41 @@
 import "../styles/TaskInput.css";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 
 type Props = {
     addTask: (text: string) => void;
 };
 
-function TaskInput({ addTask }: Props){
+function TaskInput({ addTask }: Props) {
     const [text, setText] = useState("");
 
-    const handleAdd = () => {
-        addTask(text);
-        if(text.trim() !== "") setText("");
+    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        const textoLimpio = text.trim();
+
+        if (textoLimpio === "") {
+            return;
+        }
+
+        addTask(textoLimpio);
+        setText("");
     };
 
-    return(
-        <div className="task-input">
-            <input 
+    return (
+        <form className="task-input" onSubmit={handleSubmit}>
+            <label htmlFor="task-title">Nueva tarea</label>
+
+            <input
+                id="task-title"
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(event) => setText(event.target.value)}
                 placeholder="Escribe una tarea..."
-                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
-            <button onClick={handleAdd}>Agregar</button>
-        </div>
+
+            <button type="submit">
+                Agregar
+            </button>
+        </form>
     );
 }
 
