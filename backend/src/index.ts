@@ -1,6 +1,4 @@
 import express from 'express';
-import "dotenv/config";
-import cors from 'cors';
 
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
