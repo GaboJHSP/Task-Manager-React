@@ -4,11 +4,8 @@ export default defineConfig({
   testDir: "./e2e",
 
   fullyParallel: true,
-
   forbidOnly: Boolean(process.env.CI),
-
   retries: process.env.CI ? 2 : 0,
-
   workers: process.env.CI ? 1 : undefined,
 
   reporter: [
@@ -30,9 +27,10 @@ export default defineConfig({
   },
 
   webServer: {
-    command: "npm run dev -- --host 127.0.0.1",
+    command:
+      "npm run dev -- --host 127.0.0.1 --mode e2e",
     url: "http://127.0.0.1:5173",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 
