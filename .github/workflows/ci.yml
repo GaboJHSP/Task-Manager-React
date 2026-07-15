@@ -1,0 +1,241 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ==========================================================
+  # FRONTEND: LINT Y COMPILACIÓN
+  # ==========================================================
+  frontend:
+    name: Frontend - Lint & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: ./
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Instalar dependencias del frontend
+        run: npm ci
+
+      - name: Ejecutar lint del frontend
+        run: npm run lint
+
+      - name: Compilar frontend
+        run: npm run build
+
+  # ==========================================================
+  # BACKEND: PRISMA, LINT Y COMPILACIÓN
+  # ==========================================================
+  backend:
+    name: Backend - Lint & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias del backend
+        run: npm ci
+
+      - name: Generar cliente Prisma
+        run: npx prisma generate
+
+      - name: Ejecutar lint del backend
+        run: npm run lint --if-present
+
+      - name: Compilar backend
+        run: npm run build --if-present
+
+  # ==========================================================
+  # FRONTEND: PRUEBAS UNITARIAS Y COBERTURA
+  # ==========================================================
+  pruebas:
+    name: Pruebas unitarias y cobertura
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: ./
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Instalar dependencias del frontend
+        run: npm ci
+
+      - name: Ejecutar pruebas y cobertura
+        run: npx vitest run --coverage
+
+      - name: Guardar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-cobertura-frontend
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ==========================================================
+  # PRUEBAS END-TO-END CON PLAYWRIGHT
+  # ==========================================================
+  e2e:
+    name: Pruebas E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: task_manager
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d task_manager"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/task_manager?schema=public
+      VITE_API_URL: http://127.0.0.1:3000
+
+    defaults:
+      run:
+        working-directory: ./
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+
+      - name: Instalar dependencias del frontend
+        run: npm ci
+
+      - name: Instalar dependencias del backend
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Generar cliente Prisma
+        working-directory: ./backend
+        run: npx prisma generate
+
+      - name: Crear estructura de base de datos
+        working-directory: ./backend
+        run: npx prisma db push
+
+      - name: Iniciar backend
+        working-directory: ./backend
+        run: |
+          nohup npm run start > backend.log 2>&1 &
+          echo $! > backend.pid
+
+      - name: Esperar disponibilidad del backend
+        run: |
+          for intento in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
+              echo "Backend disponible"
+              exit 0
+            fi
+
+            echo "Esperando backend: intento $intento de 30"
+            sleep 2
+          done
+
+          echo "El backend no pudo iniciar"
+          cat backend/backend.log || true
+          exit 1
+
+      - name: Instalar Chromium y dependencias
+        run: npx playwright install --with-deps chromium
+
+      - name: Ejecutar pruebas E2E
+        run: npx playwright test
+
+      - name: Mostrar log del backend si falla
+        if: failure()
+        run: cat backend/backend.log || true
+
+      - name: Guardar reporte de Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-playwright
+          path: playwright-report/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Guardar evidencias de Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias-playwright
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Guardar log del backend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-backend-e2e
+          path: backend/backend.log
+          if-no-files-found: warn
+          retention-days: 7
