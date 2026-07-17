@@ -3,18 +3,11 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 
 import { config } from "dotenv";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const currentFile = fileURLToPath(import.meta.url);
-const currentDirectory = dirname(currentFile);
-
-config({
-    path: resolve(currentDirectory, "../.env"),
-});
+config();
 
 const connectionString = process.env.DATABASE_URL;
 
