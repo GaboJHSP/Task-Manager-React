@@ -111,6 +111,62 @@ jobs:
         run: npm run build
 
   # ==========================================================
+  # PRISMA: MIGRACIONES CONTRA POSTGRESQL EFÍMERO
+  # ==========================================================
+  migraciones:
+    name: Migraciones y Seeds
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+
+        ports:
+          - 5432:5432
+
+        options: >-
+          --health-cmd="pg_isready -U testuser -d testdb"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://testuser:testpass@127.0.0.1:5432/testdb?schema=public
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias del backend
+        run: npm ci
+
+      - name: Validar configuración de Prisma
+        run: npx prisma validate
+
+      - name: Aplicar migraciones de Prisma
+        run: npx prisma migrate deploy
+
+      - name: Verificar estado de las migraciones
+        run: npx prisma migrate status
+
+  # ==========================================================
   # FRONTEND: PRUEBAS UNITARIAS Y COBERTURA
   # ==========================================================
   pruebas:
