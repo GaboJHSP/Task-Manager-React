@@ -57,6 +57,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    # Variables disponibles para todos los pasos del trabajo.
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
     defaults:
       run:
         working-directory: ./backend
@@ -75,6 +80,21 @@ jobs:
       - name: Instalar dependencias del backend
         run: npm ci
 
+      - name: Verificar variables requeridas
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::El secreto DATABASE_URL no está configurado"
+            exit 1
+          fi
+
+          if [ -z "$JWT_SECRET" ]; then
+            echo "::error::El secreto JWT_SECRET no está configurado"
+            exit 1
+          fi
+
+          echo "Las variables requeridas están configuradas"
+
       - name: Generar cliente Prisma
         run: npx prisma generate
 
@@ -82,13 +102,13 @@ jobs:
         run: npm run lint --if-present
 
       - name: Compilar backend
-        run: npm run build --if-present
+        run: npm run build
 
   # ==========================================================
   # FRONTEND: PRUEBAS UNITARIAS Y COBERTURA
   # ==========================================================
   pruebas:
-    name: Pruebas unitarias y cobertura
+    name: Frontend - Pruebas unitarias y cobertura
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -123,6 +143,67 @@ jobs:
           retention-days: 7
 
   # ==========================================================
+  # BACKEND: PRUEBAS CON VARIABLES SEGURAS
+  # ==========================================================
+  pruebas_backend:
+    name: Backend - Pruebas con variables seguras
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      NODE_ENV: test
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias del backend
+        run: npm ci
+
+      - name: Verificar variables requeridas
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::El secreto DATABASE_URL no está configurado"
+            exit 1
+          fi
+
+          if [ -z "$JWT_SECRET" ]; then
+            echo "::error::El secreto JWT_SECRET no está configurado"
+            exit 1
+          fi
+
+          echo "Las variables seguras están disponibles"
+
+      - name: Generar cliente Prisma
+        run: npx prisma generate
+
+      - name: Ejecutar pruebas del backend
+        run: npm run test
+
+      - name: Guardar cobertura del backend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-cobertura-backend
+          path: backend/coverage/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ==========================================================
   # PRUEBAS END-TO-END CON PLAYWRIGHT
   # ==========================================================
   e2e:
@@ -146,8 +227,11 @@ jobs:
           --health-retries=5
 
     env:
+      # En E2E se conserva PostgreSQL aislado del workflow.
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/task_manager?schema=public
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
       VITE_API_URL: http://127.0.0.1:3000
+      NODE_ENV: test
 
     defaults:
       run:
@@ -173,6 +257,14 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      - name: Verificar JWT_SECRET
+        shell: bash
+        run: |
+          if [ -z "$JWT_SECRET" ]; then
+            echo "::error::El secreto JWT_SECRET no está configurado"
+            exit 1
+          fi
+
       - name: Generar cliente Prisma
         working-directory: ./backend
         run: npx prisma generate
@@ -180,6 +272,10 @@ jobs:
       - name: Crear estructura de base de datos
         working-directory: ./backend
         run: npx prisma db push
+
+      - name: Compilar backend
+        working-directory: ./backend
+        run: npm run build
 
       - name: Iniciar backend
         working-directory: ./backend
