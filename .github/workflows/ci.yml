@@ -25,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    env:
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
     defaults:
       run:
         working-directory: ./
@@ -42,6 +45,16 @@ jobs:
 
       - name: Instalar dependencias del frontend
         run: npm ci
+
+      - name: Verificar VITE_API_URL
+        shell: bash
+        run: |
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::El secreto VITE_API_URL no está configurado"
+            exit 1
+          fi
+
+          echo "VITE_API_URL está configurada correctamente"
 
       - name: Ejecutar lint del frontend
         run: npm run lint
@@ -57,10 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
-    # Variables disponibles para todos los pasos del trabajo.
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
     defaults:
       run:
@@ -80,7 +91,7 @@ jobs:
       - name: Instalar dependencias del backend
         run: npm ci
 
-      - name: Verificar variables requeridas
+      - name: Verificar DATABASE_URL
         shell: bash
         run: |
           if [ -z "$DATABASE_URL" ]; then
@@ -88,12 +99,7 @@ jobs:
             exit 1
           fi
 
-          if [ -z "$JWT_SECRET" ]; then
-            echo "::error::El secreto JWT_SECRET no está configurado"
-            exit 1
-          fi
-
-          echo "Las variables requeridas están configuradas"
+          echo "DATABASE_URL está configurada correctamente"
 
       - name: Generar cliente Prisma
         run: npx prisma generate
@@ -108,9 +114,13 @@ jobs:
   # FRONTEND: PRUEBAS UNITARIAS Y COBERTURA
   # ==========================================================
   pruebas:
-    name: Frontend - Pruebas unitarias y cobertura
+    name: Pruebas con variables seguras
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
     defaults:
       run:
@@ -130,6 +140,27 @@ jobs:
       - name: Instalar dependencias del frontend
         run: npm ci
 
+      - name: Verificar variables seguras
+        shell: bash
+        run: |
+          error=0
+
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::El secreto DATABASE_URL no está configurado"
+            error=1
+          fi
+
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::El secreto VITE_API_URL no está configurado"
+            error=1
+          fi
+
+          if [ "$error" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "Las variables seguras están configuradas correctamente"
+
       - name: Ejecutar pruebas y cobertura
         run: npx vitest run --coverage
 
@@ -139,67 +170,6 @@ jobs:
         with:
           name: reporte-cobertura-frontend
           path: coverage/
-          if-no-files-found: warn
-          retention-days: 7
-
-  # ==========================================================
-  # BACKEND: PRUEBAS CON VARIABLES SEGURAS
-  # ==========================================================
-  pruebas_backend:
-    name: Backend - Pruebas con variables seguras
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      NODE_ENV: test
-
-    defaults:
-      run:
-        working-directory: ./backend
-
-    steps:
-      - name: Obtener código fuente
-        uses: actions/checkout@v4
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Instalar dependencias del backend
-        run: npm ci
-
-      - name: Verificar variables requeridas
-        shell: bash
-        run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::El secreto DATABASE_URL no está configurado"
-            exit 1
-          fi
-
-          if [ -z "$JWT_SECRET" ]; then
-            echo "::error::El secreto JWT_SECRET no está configurado"
-            exit 1
-          fi
-
-          echo "Las variables seguras están disponibles"
-
-      - name: Generar cliente Prisma
-        run: npx prisma generate
-
-      - name: Ejecutar pruebas del backend
-        run: npm run test
-
-      - name: Guardar cobertura del backend
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: reporte-cobertura-backend
-          path: backend/coverage/
           if-no-files-found: warn
           retention-days: 7
 
@@ -227,11 +197,12 @@ jobs:
           --health-retries=5
 
     env:
-      # En E2E se conserva PostgreSQL aislado del workflow.
+      # Esta URL corresponde exclusivamente al PostgreSQL temporal
+      # creado para las pruebas E2E.
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/task_manager?schema=public
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      VITE_API_URL: http://127.0.0.1:3000
-      NODE_ENV: test
+
+      # Se obtiene desde GitHub Secrets.
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
     defaults:
       run:
@@ -250,20 +221,22 @@ jobs:
             package-lock.json
             backend/package-lock.json
 
+      - name: Verificar VITE_API_URL
+        shell: bash
+        run: |
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::El secreto VITE_API_URL no está configurado"
+            exit 1
+          fi
+
+          echo "VITE_API_URL está configurada correctamente"
+
       - name: Instalar dependencias del frontend
         run: npm ci
 
       - name: Instalar dependencias del backend
         working-directory: ./backend
         run: npm ci
-
-      - name: Verificar JWT_SECRET
-        shell: bash
-        run: |
-          if [ -z "$JWT_SECRET" ]; then
-            echo "::error::El secreto JWT_SECRET no está configurado"
-            exit 1
-          fi
 
       - name: Generar cliente Prisma
         working-directory: ./backend
@@ -284,6 +257,7 @@ jobs:
           echo $! > backend.pid
 
       - name: Esperar disponibilidad del backend
+        shell: bash
         run: |
           for intento in {1..30}; do
             if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
@@ -295,7 +269,7 @@ jobs:
             sleep 2
           done
 
-          echo "El backend no pudo iniciar"
+          echo "::error::El backend no pudo iniciar"
           cat backend/backend.log || true
           exit 1
 
