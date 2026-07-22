@@ -407,7 +407,7 @@ jobs:
         run: railway --version
 
       - name: Desplegar backend a Railway staging
-        run: railway up --service Task-Manager-React --environment staging --ci
+        run: railway up --service Task-Manager-Backend --environment staging --ci
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
