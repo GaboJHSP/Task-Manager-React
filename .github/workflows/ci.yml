@@ -170,7 +170,7 @@ jobs:
   # FRONTEND: PRUEBAS UNITARIAS Y COBERTURA
   # ==========================================================
   pruebas:
-    name: Pruebas con variables seguras
+    name: Pruebas unitarias y cobertura
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
