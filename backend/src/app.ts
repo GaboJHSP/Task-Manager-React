@@ -211,4 +211,11 @@ app.get("/private", verifyToken, (req, res) => {
     });
 });
 
+app.get("/health", (_req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "task-manager-backend",
+    });
+});
+
 export default app;
