@@ -323,7 +323,7 @@ jobs:
         shell: bash
         run: |
           for intento in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
+            if curl --fail --silent http://127.0.0.1:3000/health > /dev/null; then
               echo "Backend disponible"
               exit 0
             fi
