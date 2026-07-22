@@ -365,3 +365,41 @@ jobs:
           path: backend/backend.log
           if-no-files-found: warn
           retention-days: 7
+
+  # ==========================================================
+  # DESPLIEGUE AUTOMÁTICO DEL BACKEND A STAGING
+  # ==========================================================
+  deploy-staging:
+    name: Deploy a Staging
+
+    needs:
+      - frontend
+      - backend
+      - pruebas
+      - e2e
+      - migraciones
+
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Verificar Railway CLI
+        run: railway --version
+
+      - name: Desplegar backend a Railway staging
+        run: railway up --service backend --environment staging --ci
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
