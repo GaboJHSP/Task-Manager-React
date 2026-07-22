@@ -25,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    env:
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
     defaults:
       run:
         working-directory: ./
@@ -43,6 +46,16 @@ jobs:
       - name: Instalar dependencias del frontend
         run: npm ci
 
+      - name: Verificar VITE_API_URL
+        shell: bash
+        run: |
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::El secreto VITE_API_URL no está configurado"
+            exit 1
+          fi
+
+          echo "VITE_API_URL está configurada correctamente"
+
       - name: Ejecutar lint del frontend
         run: npm run lint
 
@@ -56,6 +69,9 @@ jobs:
     name: Backend - Lint & Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     defaults:
       run:
@@ -75,6 +91,16 @@ jobs:
       - name: Instalar dependencias del backend
         run: npm ci
 
+      - name: Verificar DATABASE_URL
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::El secreto DATABASE_URL no está configurado"
+            exit 1
+          fi
+
+          echo "DATABASE_URL está configurada correctamente"
+
       - name: Generar cliente Prisma
         run: npx prisma generate
 
@@ -82,7 +108,63 @@ jobs:
         run: npm run lint --if-present
 
       - name: Compilar backend
-        run: npm run build --if-present
+        run: npm run build
+
+  # ==========================================================
+  # PRISMA: MIGRACIONES CONTRA POSTGRESQL EFÍMERO
+  # ==========================================================
+  migraciones:
+    name: Migraciones y Seeds
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+
+        ports:
+          - 5432:5432
+
+        options: >-
+          --health-cmd="pg_isready -U testuser -d testdb"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://testuser:testpass@127.0.0.1:5432/testdb?schema=public
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias del backend
+        run: npm ci
+
+      - name: Validar configuración de Prisma
+        run: npx prisma validate
+
+      - name: Aplicar migraciones de Prisma
+        run: npx prisma migrate deploy
+
+      - name: Verificar estado de las migraciones
+        run: npx prisma migrate status
 
   # ==========================================================
   # FRONTEND: PRUEBAS UNITARIAS Y COBERTURA
@@ -91,6 +173,10 @@ jobs:
     name: Pruebas unitarias y cobertura
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
     defaults:
       run:
@@ -109,6 +195,27 @@ jobs:
 
       - name: Instalar dependencias del frontend
         run: npm ci
+
+      - name: Verificar variables seguras
+        shell: bash
+        run: |
+          error=0
+
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::El secreto DATABASE_URL no está configurado"
+            error=1
+          fi
+
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::El secreto VITE_API_URL no está configurado"
+            error=1
+          fi
+
+          if [ "$error" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "Las variables seguras están configuradas correctamente"
 
       - name: Ejecutar pruebas y cobertura
         run: npx vitest run --coverage
@@ -146,8 +253,12 @@ jobs:
           --health-retries=5
 
     env:
+      # Esta URL corresponde exclusivamente al PostgreSQL temporal
+      # creado para las pruebas E2E.
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/task_manager?schema=public
-      VITE_API_URL: http://127.0.0.1:3000
+
+      # Se obtiene desde GitHub Secrets.
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
     defaults:
       run:
@@ -166,6 +277,16 @@ jobs:
             package-lock.json
             backend/package-lock.json
 
+      - name: Verificar VITE_API_URL
+        shell: bash
+        run: |
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::El secreto VITE_API_URL no está configurado"
+            exit 1
+          fi
+
+          echo "VITE_API_URL está configurada correctamente"
+
       - name: Instalar dependencias del frontend
         run: npm ci
 
@@ -181,6 +302,10 @@ jobs:
         working-directory: ./backend
         run: npx prisma db push
 
+      - name: Compilar backend
+        working-directory: ./backend
+        run: npm run build
+
       - name: Iniciar backend
         working-directory: ./backend
         run: |
@@ -188,6 +313,7 @@ jobs:
           echo $! > backend.pid
 
       - name: Esperar disponibilidad del backend
+        shell: bash
         run: |
           for intento in {1..30}; do
             if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
@@ -199,7 +325,7 @@ jobs:
             sleep 2
           done
 
-          echo "El backend no pudo iniciar"
+          echo "::error::El backend no pudo iniciar"
           cat backend/backend.log || true
           exit 1
 
@@ -239,3 +365,41 @@ jobs:
           path: backend/backend.log
           if-no-files-found: warn
           retention-days: 7
+
+  # ==========================================================
+  # DESPLIEGUE AUTOMÁTICO DEL BACKEND A STAGING
+  # ==========================================================
+  deploy-staging:
+    name: Deploy a Staging
+
+    needs:
+      - frontend
+      - backend
+      - pruebas
+      - e2e
+      - migraciones
+
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Obtener código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Verificar Railway CLI
+        run: railway --version
+
+      - name: Desplegar backend a Railway staging
+        run: railway up --service backend --environment staging --ci
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
