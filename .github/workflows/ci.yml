@@ -164,8 +164,33 @@ jobs:
       - name: Instalar dependencias del backend
         run: npm ci
 
+      - name: Mostrar versiones de Prisma
+        run: npx prisma version
+
       - name: Validar configuración de Prisma
-        run: npx prisma validate
+        run: npx prisma validate --schema=prisma/schema.prisma
+
+      - name: Generar cliente Prisma
+        run: npx prisma generate --schema=prisma/schema.prisma
+
+      - name: Verificar cliente Prisma generado
+        shell: bash
+        run: |
+          echo "Verificando archivos generados por Prisma..."
+
+          if [ ! -f "node_modules/.prisma/client/default.js" ]; then
+            echo "::error::No se generó node_modules/.prisma/client/default.js"
+
+            echo "Contenido de node_modules/.prisma:"
+            find node_modules/.prisma -maxdepth 3 -type f 2>/dev/null | head -100 || true
+
+            echo "Contenido de node_modules/@prisma/client:"
+            find node_modules/@prisma/client -maxdepth 2 -type f 2>/dev/null | head -100 || true
+
+            exit 1
+          fi
+
+          echo "Cliente Prisma generado correctamente"
 
       - name: Aplicar migraciones de Prisma
         run: npx prisma migrate deploy
