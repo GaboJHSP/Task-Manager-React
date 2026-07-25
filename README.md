@@ -8,14 +8,6 @@ El proyecto incorpora un flujo completo de integración y despliegue continuo, i
 
 ![CI](https://github.com/GaboJHSP/Task-Manager-React/actions/workflows/ci.yml/badge.svg?branch=main)
 
-## Aplicación desplegada
-
-- **Ambiente de staging:** `REEMPLAZAR_CON_URL_DE_RAILWAY`
-- **Healthcheck del backend:** `REEMPLAZAR_CON_URL_DE_RAILWAY/health`
-- **Repositorio:** https://github.com/GaboJHSP/Task-Manager-React
-
-> El despliegue a staging se ejecuta automáticamente después de integrar cambios en la rama `main`, siempre que todas las validaciones del pipeline terminen correctamente.
-
 ---
 
 ## Funcionalidades principales
